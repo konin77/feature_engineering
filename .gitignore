@@ -1,0 +1,16 @@
+# Python関連
+__pycache__/
+*.pyc
+
+# 環境設定ファイル
+.env
+
+# IDE関連
+.vscode/
+.idea/
+
+# その他
+*.log
+
+.env/
+.venv/
