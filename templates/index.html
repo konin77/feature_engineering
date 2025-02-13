@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSVファイル管理ツール</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .table-container {
+            overflow-x: auto;
+            max-height: 800px;
+        }
+        .col-preview { width: 35%; }
+        .col-middle { width: 30%; }
+        .col-info { width: 35%; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid mt-4">
+        <h1 class="text-center mb-4">CSVファイル管理ツール</h1>
+
+        <!-- ファイルアップロードフォーム -->
+        <form method="POST" enctype="multipart/form-data" class="mb-4">
+            <input type="file" name="file" class="form-control mb-2" accept=".csv" required>
+            <button type="submit" class="btn btn-primary w-100">ファイルアップロード</button>
+        </form>
+
+        <!-- ファイルリスト -->
+        <h3>アップロード済みファイル</h3>
+        <ul class="list-group mb-4">
+            {% for file in files %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <a href="{{ url_for('display_file', file_id=file.id) }}">{{ file.filename }}</a>
+                    <form method="POST" action="{{ url_for('delete_file', file_id=file.id) }}" class="d-inline">
+                        <button type="submit" class="btn btn-danger btn-sm">削除</button>
+                    </form>
+                </li>
+            {% endfor %}
+        </ul>
+
+        {% if table %}
+        <div class="row">
+            <!-- 左側（プレビュー） -->
+            <div class="col-preview">
+                <h3>データプレビュー: {{ filename }}</h3>
+                <div class="table-container table-responsive">{{ table | safe }}</div>
+            </div>
+
+            <!-- 中央（列削除 & 欠損値補完） -->
+            <div class="col-middle">
+                <h3>データ前処理</h3>
+
+                <!-- 列削除フォーム -->
+                <form method="POST" action="{{ url_for('remove_columns', file_id=current_file_id) }}" class="mb-4">
+                    <h5>列削除</h5>
+                    {% for column in all_columns %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="columns_to_remove" value="{{ column }}" id="remove_{{ column }}">
+                            <label class="form-check-label" for="remove_{{ column }}">{{ column }}</label>
+                        </div>
+                    {% endfor %}
+                    <button type="submit" class="btn btn-danger w-100 mt-2">選択した列を削除</button>
+                </form>
+
+                <!-- 欠損値補完（平均・中央値・最頻値） -->
+                <form method="POST" action="{{ url_for('fill_missing', file_id=current_file_id) }}" class="mb-4">
+                    <h5>欠損値補完（平均・中央値・最頻値）</h5>
+                    <label class="form-label">補完する列を選択:</label>
+                    {% for column in all_columns %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="columns_to_fill" value="{{ column }}" id="fill_{{ column }}">
+                            <label class="form-check-label" for="fill_{{ column }}">{{ column }}</label>
+                        </div>
+                    {% endfor %}
+                    <label class="form-label mt-2">補完方法:</label>
+                    <select class="form-select" name="strategy" required>
+                        <option value="mean">平均値補完</option>
+                        <option value="median">中央値補完</option>
+                        <option value="mode">最頻値補完</option>
+                    </select>
+                    <button type="submit" class="btn btn-info w-100 mt-2">欠損値を補完</button>
+                </form>
+
+                <!-- 欠損値補完（勾配ブースティング） -->
+                <form method="POST" action="{{ url_for('fill_missing_gb', file_id=current_file_id) }}" class="mb-4">
+                    <h5>欠損値補完（勾配ブースティング）</h5>
+                    <label class="form-label">ターゲット列:</label>
+                    <select class="form-select" name="target_column" required>
+                        <option value="" disabled selected>選択してください</option>
+                        {% for column in all_columns %}
+                            <option value="{{ column }}">{{ column }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <label class="form-label mt-2">特徴量を選択:</label>
+                    {% for column in all_columns %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="feature_columns" value="{{ column }}" id="feature_{{ column }}">
+                            <label class="form-check-label" for="feature_{{ column }}">{{ column }}</label>
+                        </div>
+                    {% endfor %}
+
+                    <label class="form-label mt-2">パラメータ設定:</label>
+                    <input type="number" class="form-control mb-2" name="n_estimators" value="100" min="10" required>
+                    <input type="number" class="form-control mb-2" name="learning_rate" step="0.01" value="0.1" required>
+                    <input type="number" class="form-control mb-2" name="max_depth" value="3" required>
+                    <button type="submit" class="btn btn-warning w-100 mt-2">欠損値を補完</button>
+                </form>
+
+                <!-- データのダウンロード -->
+                <a href="{{ url_for('download_file', file_id=current_file_id) }}" class="btn btn-success w-100 mt-3">データをダウンロード</a>
+            </div>
+
+            <!-- 右側（欠損情報 & 基本情報） -->
+            <div class="col-info">
+                <h3>データ情報</h3>
+                <div>{{ basic_info | safe }}</div>
+
+                <h3 class="mt-4">欠損値情報</h3>
+                <div class="table-container table-responsive">{{ missing_info | safe }}</div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>
