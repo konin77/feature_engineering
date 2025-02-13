@@ -13,3 +13,4 @@ class UploadedFile(db.Model):
 
     def __repr__(self):
         return f'<UploadedFile {self.filename}>'
+
